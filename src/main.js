@@ -1,6 +1,6 @@
 import { loadAssets } from "./assetLoader";
 import { COLORS } from "./constants";
-import Dog from "./entities/dog";
+import makeDog from "./entities/dog";
 import Duck from "./entities/duck";
 import k from "./kaplayCtx";
 import gameManager from "./gameManager";
@@ -73,7 +73,7 @@ k.scene("game", () => {
     k.color(0, 0, 0),
   ]);
 
-  const dog = new Dog(k.vec2(0, k.center().y));
+  const dog = makeDog(k.vec2(0, k.center().y));
   dog.searchForDucks();
 
   const roundStartController = gameManager.stateMachine.onStateEnter(
