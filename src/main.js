@@ -1,12 +1,48 @@
-import { loadAssets } from "./assetLoader";
 import { COLORS } from "./constants";
 import makeDog from "./entities/dog";
-import Duck from "./entities/duck";
 import k from "./kaplayCtx";
 import gameManager from "./gameManager";
 import formatScore from "./utils";
+import makeDuck from "./entities/duck";
 
-loadAssets();
+k.loadSprite("background", "./graphics/background.png");
+k.loadSprite("menu", "./graphics/menu.png");
+k.loadSprite("cursor", "./graphics/cursor.png");
+k.loadFont("nes", "./fonts/nintendo-nes-font/nintendo-nes-font.ttf");
+k.loadSprite("dog", "./graphics/dog.png", {
+  sliceX: 4,
+  sliceY: 3,
+  anims: {
+    search: { from: 0, to: 3, speed: 6, loop: true },
+    snif: { from: 4, to: 5, speed: 4, loop: true },
+    detect: 6,
+    jump: { from: 7, to: 8, speed: 6 },
+    catch: 9,
+    mock: { from: 10, to: 11, loop: true },
+  },
+});
+k.loadSprite("duck", "./graphics/duck.png", {
+  sliceX: 8,
+  sliceY: 1,
+  anims: {
+    "flight-diagonal": { from: 0, to: 2, loop: true },
+    "flight-side": { from: 3, to: 5, loop: true },
+    shot: 6,
+    fall: 7,
+  },
+});
+k.loadSprite("text-box", "./graphics/text-box.png");
+k.loadSound("gun-shot", "./sounds/gun-shot.wav");
+k.loadSound("quacking", "./sounds/quacking.wav");
+k.loadSound("flapping", "./sounds/flapping.ogg");
+k.loadSound("fall", "./sounds/fall.wav");
+k.loadSound("impact", "./sounds/impact.wav");
+k.loadSound("sniffing", "./sounds/sniffing.wav");
+k.loadSound("barking", "./sounds/barking.wav");
+k.loadSound("laughing", "./sounds/laughing.wav");
+k.loadSound("ui-appear", "./sounds/ui-appear.wav");
+k.loadSound("successful-hunt", "./sounds/successful-hunt.wav");
+k.loadSound("forest-ambiance", "./sounds/forest-ambiance.wav");
 
 k.scene("main-menu", () => {
   k.add([k.sprite("menu")]);
@@ -76,7 +112,7 @@ k.scene("game", () => {
   const dog = makeDog(k.vec2(0, k.center().y));
   dog.searchForDucks();
 
-  const roundStartController = gameManager.stateMachine.onStateEnter(
+  const roundStartController = gameManager.onStateEnter(
     "round-start",
     async (isFirstRound) => {
       if (!isFirstRound) gameManager.preySpeed += 50;
@@ -102,70 +138,55 @@ k.scene("game", () => {
 
       await k.wait(1);
       k.destroy(textBox);
-      gameManager.stateMachine.enterState("hunt-start");
+      gameManager.enterState("hunt-start");
     }
   );
 
-  const roundEndController = gameManager.stateMachine.onStateEnter(
-    "round-end",
-    () => {
-      if (gameManager.nbDucksShotInRound < 6) {
-        k.go("game-over");
-        return;
-      }
-
-      if (gameManager.nbDucksShotInRound === 10) {
-        gameManager.currentScore += 500;
-      }
-
-      gameManager.nbDucksShotInRound = 0;
-      for (const duckIcon of duckIcons.children) {
-        duckIcon.color = k.color(255, 255, 255);
-      }
-      gameManager.stateMachine.enterState("round-start");
+  const roundEndController = gameManager.onStateEnter("round-end", () => {
+    if (gameManager.nbDucksShotInRound < 6) {
+      k.go("game-over");
+      return;
     }
-  );
 
-  const huntStartController = gameManager.stateMachine.onStateEnter(
-    "hunt-start",
-    () => {
-      gameManager.currentHuntNb++;
-      const duck = new Duck(
-        gameManager.currentHuntNb - 1,
-        gameManager.preySpeed
-      );
-      duck.setBehavior();
+    if (gameManager.nbDucksShotInRound === 10) {
+      gameManager.currentScore += 500;
     }
-  );
 
-  const huntEndController = gameManager.stateMachine.onStateEnter(
-    "hunt-end",
-    () => {
-      const bestScore = Number(k.getData("best-score"));
-
-      if (bestScore < gameManager.currentScore) {
-        k.setData("best-score", gameManager.currentScore);
-      }
-
-      if (gameManager.currentHuntNb <= 9) {
-        gameManager.stateMachine.enterState("hunt-start");
-        return;
-      }
-
-      gameManager.currentHuntNb = 0;
-      gameManager.stateMachine.enterState("round-end");
+    gameManager.nbDucksShotInRound = 0;
+    for (const duckIcon of duckIcons.children) {
+      duckIcon.color = k.color(255, 255, 255);
     }
-  );
+    gameManager.enterState("round-start");
+  });
 
-  const duckHunterController = gameManager.stateMachine.onStateEnter(
-    "duck-hunted",
-    () => {
-      gameManager.nbBulletsLeft = 3;
-      dog.catchFallenDuck();
+  const huntStartController = gameManager.onStateEnter("hunt-start", () => {
+    gameManager.currentHuntNb++;
+    const duck = makeDuck(gameManager.currentHuntNb - 1, gameManager.preySpeed);
+    duck.setBehavior();
+  });
+
+  const huntEndController = gameManager.onStateEnter("hunt-end", () => {
+    const bestScore = Number(k.getData("best-score"));
+
+    if (bestScore < gameManager.currentScore) {
+      k.setData("best-score", gameManager.currentScore);
     }
-  );
 
-  const duckEscapedController = gameManager.stateMachine.onStateEnter(
+    if (gameManager.currentHuntNb <= 9) {
+      gameManager.enterState("hunt-start");
+      return;
+    }
+
+    gameManager.currentHuntNb = 0;
+    gameManager.enterState("round-end");
+  });
+
+  const duckHunterController = gameManager.onStateEnter("duck-hunted", () => {
+    gameManager.nbBulletsLeft = 3;
+    dog.catchFallenDuck();
+  });
+
+  const duckEscapedController = gameManager.onStateEnter(
     "duck-escaped",
     async () => {
       dog.mockPlayer();
@@ -179,10 +200,7 @@ k.scene("game", () => {
     k.z(3),
   ]);
   k.onClick(() => {
-    if (
-      gameManager.stateMachine.state === "hunt-start" &&
-      !gameManager.isGamePaused
-    ) {
+    if (gameManager.state === "hunt-start" && !gameManager.isGamePaused) {
       // Note : we need to allow nbBulletsLeft to go below zero
       // so that if cursor overlaps with duck, the duck shot logic
       // will work. Otherwise, the onClick in the Duck class will
@@ -223,7 +241,7 @@ k.scene("game", () => {
     huntEndController.cancel();
     duckHunterController.cancel();
     duckEscapedController.cancel();
-    gameManager.initializeGameState();
+    gameManager.resetGameState();
   });
 
   k.onKeyPress((key) => {
