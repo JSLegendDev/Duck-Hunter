@@ -20,6 +20,7 @@ export default function makeDog(position) {
       speed: 15,
       searchForDucks() {
         let nbSnifs = 0;
+
         this.onStateEnter("search", () => {
           this.play("search");
           k.wait(2, () => {
