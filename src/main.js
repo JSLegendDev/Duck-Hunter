@@ -67,8 +67,11 @@ k.scene("main-menu", () => {
     k.setData("best-score", 0);
   }
   k.add([
-    k.text(formatScore(bestScore, 6), { font: "nes", size: 8 }),
-    k.pos(150, 184),
+    k.text(`TOP SCORE = ${formatScore(bestScore, 6)}`, {
+      font: "nes",
+      size: 8,
+    }),
+    k.pos(55, 184),
     k.color(COLORS.RED),
   ]);
 
